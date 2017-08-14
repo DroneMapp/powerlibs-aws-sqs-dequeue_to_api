@@ -1,0 +1,25 @@
+config:
+    base_url: "http://{data.company_name}.example.com/v1/"
+
+actions:
+    update_object_to_processing:
+        topic: "{data.company_name}__processing__started"
+        endpoint: "parents/{data.parent_id}/"
+        method: "PATCH"
+        payload:
+            status: "processing"
+
+    update_object_to_processed:
+        topic: "{data.company_name}__processing__finished"
+        endpoint: "parents/{data.parent_id}/"
+        method: "PATCH"
+        payload:
+            status: "processed"
+
+    create_new_status:
+        topic: "{data.company_name}__processing__finished"
+        endpoint: "stati/"
+        method: "POST"
+        payload:
+            parent_id: "{data.parent_id}"
+            status: "processing finished"
