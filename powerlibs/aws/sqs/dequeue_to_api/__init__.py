@@ -86,7 +86,7 @@ class DequeueToAPI(SQSDequeuer):
         payload = json.loads(message.body)
 
         attributes = message.message_attributes
-        topic = attributes['topic']
+        topic = attributes['topic']['StringValue']
 
         return self.do_handle_message(message, topic, payload)
 
