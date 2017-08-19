@@ -15,6 +15,10 @@ class DequeueToAPI(SQSDequeuer):
 
         self.load_request_methods()
 
+    @property
+    def requests_headers(self):
+        return {}
+
     def load_request_methods(self):
         self.request_methods = {}
 
@@ -48,7 +52,7 @@ class DequeueToAPI(SQSDequeuer):
         payload = self.hydrate_payload(action['payload'], data)
 
         requests_method = self.request_methods[method.lower()]
-        action['do_request'] = partial(requests_method, url, data=payload)
+        action['do_request'] = partial(requests_method, url, data=payload, headers=self.requests_headers)
 
     def get_actions_for_topic(self, topic, data):
         for topic_name, actions in self.topics.items():
