@@ -77,7 +77,8 @@ class DequeueToAPI(SQSDequeuer):
             try:
                 action_data['run']()
             except Exception as ex:
-                self.logger.error('Exception on topic "{topic}", action "{action_name}": {ex}'.format(
+                self.logger.error('Exception {ex_type} on topic "{topic}", action "{action_name}": {ex}'.format(
+                    ex_type=type(ex),
                     topic=topic,
                     action_name=action_name,
                     ex=ex
