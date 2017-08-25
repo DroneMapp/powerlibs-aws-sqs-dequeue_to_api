@@ -23,7 +23,7 @@ def update_message():
             'parent_id': 2,
             'company_name': 'mycompany',
         },
-        {'topic': 'mycompany__child_created'}
+        {'topic': {'StringValue': 'mycompany__child_created'}}
     )
 
 
@@ -35,7 +35,7 @@ def create_message():
             'parent_id': 2,
             'company_name': 'mycompany',
         },
-        {'topic': 'mycompany__child_updated'}
+        {'topic': {'StringValue': 'mycompany__child_updated'}}
     )
 
 
