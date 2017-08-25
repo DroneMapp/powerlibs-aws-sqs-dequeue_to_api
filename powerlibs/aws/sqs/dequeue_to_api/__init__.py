@@ -22,7 +22,7 @@ class DequeueToAPI(SQSDequeuer):
     def load_request_methods(self):
         self.request_methods = {}
 
-        for method_name in ('get', 'post', 'patch', 'delete'):
+        for method_name in ('get', 'post', 'patch', 'delete', 'put'):
             self.request_methods[method_name] = getattr(requests, method_name)
 
     def load_config(self, config_data):
