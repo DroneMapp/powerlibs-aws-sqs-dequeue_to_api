@@ -52,7 +52,15 @@ class DequeueToAPI(SQSDequeuer):
         payload = self.hydrate_payload(action['payload'], data)
 
         requests_method = self.request_methods[method.lower()]
-        action['do_request'] = partial(requests_method, url, data=payload, headers=self.requests_headers)
+
+        partial_request = partial(requests_method, url, data=payload, headers=self.requests_headers)
+
+        def do_request(the_partial_request):
+            response = the_partial_request()
+            response.raise_for_status()
+            return response
+
+        action['run'] = partial(do_request, partial_request)
 
     def get_actions_for_topic(self, topic, data):
         for topic_name, actions in self.topics.items():
@@ -67,8 +75,7 @@ class DequeueToAPI(SQSDequeuer):
         treated_messages = 0
         for action_name, action_data in self.get_actions_for_topic(topic, payload):
             try:
-                response = action_data['do_request']()
-                response.raise_for_status()
+                action_data['run']()
             except Exception as ex:
                 self.logger.error('Exception on topic "{topic}", action "{action_name}": {ex}'.format(
                     topic=topic,
