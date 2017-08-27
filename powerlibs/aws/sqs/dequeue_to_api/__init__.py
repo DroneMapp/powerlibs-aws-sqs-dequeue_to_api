@@ -35,25 +35,24 @@ class DequeueToAPI(SQSDequeuer):
 
             self.topics[topic_name].append((action_name, action_data))
 
-    def hydrate_payload(self, payload_template, data):
-        payload = {}
+    def hydrate_payload(self, payload_template, payload):
+        hydrated_payload = {}
         for key, value in payload_template.items():
-            payload[key] = value.format(data=data)
+            hydrated_payload[key] = value.format(payload=payload)
 
-        return payload
+        return hydrated_payload
 
-    def hydrate_action(self, action, data):
+    def hydrate_action(self, action, payload):
         url_str = os.path.join(self.config['base_url'], action['endpoint'])
-        url = url_str.format(config=self.config, data=data)
+        url = url_str.format(config=self.config, payload=payload)
         action['url'] = url
 
         method = action['method']
-
-        payload = self.hydrate_payload(action['payload'], data)
-
         requests_method = self.request_methods[method.lower()]
 
-        partial_request = partial(requests_method, url, data=payload, headers=self.requests_headers)
+        hydrated_payload = self.hydrate_payload(action['payload'], payload)
+
+        partial_request = partial(requests_method, url, data=hydrated_payload, headers=self.requests_headers)
 
         def do_request(the_partial_request):
             response = the_partial_request()
@@ -62,12 +61,12 @@ class DequeueToAPI(SQSDequeuer):
 
         action['run'] = partial(do_request, partial_request)
 
-    def get_actions_for_topic(self, topic, data):
+    def get_actions_for_topic(self, topic, payload):
         for topic_name, actions in self.topics.items():
-            expanded_topic_name = topic_name.format(config=self.config, data=data)
+            expanded_topic_name = topic_name.format(config=self.config, payload=payload)
             if expanded_topic_name == topic:
                 for action_name, action_data in actions:
-                    self.hydrate_action(action_data, data)
+                    self.hydrate_action(action_data, payload)
                     yield (action_name, action_data)
 
     def do_handle_message(self, message, topic, payload):

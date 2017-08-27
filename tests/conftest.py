@@ -43,24 +43,24 @@ def create_message():
 def config():
     return {
         'config': {
-            'base_url': 'https://{data[company_name]}.example.com/',
+            'base_url': 'https://{payload[company_name]}.example.com/',
         },
         'actions': {
             'update_parent': {
-                'topic': '{data[company_name]}__child_created',
-                'endpoint': 'parents/{data[parent_id]}',
+                'topic': '{payload[company_name]}__child_created',
+                'endpoint': 'parents/{payload[parent_id]}',
                 'method': 'PATCH',
                 'payload': {
                     'status': 'new status',
                 }
             },
             'create_status': {
-                'topic': '{data[company_name]}__child_updated',
+                'topic': '{payload[company_name]}__child_updated',
                 'endpoint': 'stati/',
                 'method': 'POST',
                 'payload': {
                     'status': 'created',
-                    'parent': '{data[id]}',
+                    'parent': '{payload[id]}',
                 }
             }
         }
