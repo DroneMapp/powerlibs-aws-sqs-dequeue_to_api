@@ -16,6 +16,13 @@ class Message:
 
 
 @pytest.fixture
+def simple_message_payload():
+    return {
+        'id': 'MESSAGE_ID'
+    }
+
+
+@pytest.fixture
 def update_message():
     return Message(
         {
@@ -89,3 +96,53 @@ def dequeuer(config):
         d.request_methods[method_name] = mocked_requests_method
 
     return d
+
+
+@pytest.fixture
+def accumulators():
+    return (
+        ('alfa', 'http://example.com/foo/{message[id]}/'),
+        ('beta', 'http://example.com/bar/?parent={alfa[id]}'),
+        ('gama', 'http://example.com/baz/{beta[baz_id]}')
+    )
+
+
+@pytest.fixture
+def accumulators_responses():
+    return {
+        'http://example.com/foo/MESSAGE_ID/': (
+            {'id': 'ALFA_ID_01'},
+            {'id': 'ALFA_ID_02'},
+        ),
+        'http://example.com/bar/?parent=ALFA_ID_01': (
+            {'id': 'BETA_ID_01', 'baz_id': 'BAZ_ID_01'},
+            {'id': 'BETA_ID_02', 'baz_id': 'BAZ_ID_02'},
+        ),
+        'http://example.com/bar/?parent=ALFA_ID_02': (
+            {'id': 'BETA_ID_01', 'baz_id': 'BAZ_ID_11'},
+            {'id': 'BETA_ID_02', 'baz_id': 'BAZ_ID_12'},
+        ),
+        'http://example.com/baz/BAZ_ID_01': (
+            {'id': 'FINAL_01'},
+            {'id': 'FINAL_02'},
+        ),
+        'http://example.com/baz/BAZ_ID_02': (
+            {'id': 'FINAL_03'},
+        ),
+        'http://example.com/baz/BAZ_ID_11': (
+            {'id': 'FINAL_04'},
+            {'id': 'FINAL_05'},
+            {'id': 'FINAL_06'},
+        ),
+        'http://example.com/baz/BAZ_ID_12': (
+            {'id': 'FINAL_07'},
+        ),
+    }
+
+
+@pytest.fixture
+def data_map():
+    return {
+        'alfa': 'A',
+        'beta': 'B',
+    }
