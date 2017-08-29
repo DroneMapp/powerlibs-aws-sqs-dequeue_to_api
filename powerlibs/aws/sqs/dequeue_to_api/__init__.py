@@ -1,11 +1,15 @@
 from collections import defaultdict
 from functools import partial
+import glob
+import importlib
 import json
 import os.path
+import sys
 
 import requests
 
 from powerlibs.aws.sqs.dequeuer import SQSDequeuer
+from .transformations import accumulate, apply_data_map
 
 
 class DequeueToAPI(SQSDequeuer):
@@ -14,6 +18,9 @@ class DequeueToAPI(SQSDequeuer):
         self.load_config(config_data)
 
         self.load_request_methods()
+
+        self.custom_handlers = {}
+        self.load_custom_handlers(self.config.get('custom_handlers', {}))
 
     @property
     def requests_headers(self):
@@ -43,23 +50,67 @@ class DequeueToAPI(SQSDequeuer):
         return hydrated_payload
 
     def hydrate_action(self, action, payload):
-        url_str = os.path.join(self.config['base_url'], action['endpoint'])
+        endpoint = action.get('endpoint', None)
+        if endpoint:
+            self.hydrate_action_with_endpoint(action, payload, endpoint)
+
+        custom_handlers = action.get('custom_handlers', None)
+        if custom_handlers:
+            self.hydrate_action_with_custom_handlers(action, payload, custom_handlers)
+
+    def hydrate_action_with_endpoint(self, action, payload, endpoint):
+        url_str = os.path.join(self.config['base_url'], endpoint)
         url = url_str.format(config=self.config, payload=payload)
-        action['url'] = url
+        request_method = self.request_methods[action['method'].lower()]
 
-        method = action['method']
-        requests_method = self.request_methods[method.lower()]
+        accumulators = action.get('accumulators', [])
+        accumulation_entries = accumulate(payload, accumulators)
 
-        hydrated_payload = self.hydrate_payload(action['payload'], payload)
+        data_map = action.get('data_map', {})
+        mapped_entries = [apply_data_map(entry, data_map) for entry in accumulation_entries]
 
-        partial_request = partial(requests_method, url, data=hydrated_payload, headers=self.requests_headers)
+        def run(the_request_method, the_mapped_entries, headers):
+            for entry in the_mapped_entries:
+                the_request_method(url, payload=entry, headers=headers)
 
-        def do_request(the_partial_request):
-            response = the_partial_request()
-            response.raise_for_status()
-            return response
+        partial_run = partial(run, request_method, mapped_entries, self.requests_headers)
+        action['run'] = partial_run
 
-        action['run'] = partial(do_request, partial_request)
+    def load_custom_handlers(self, config):
+        for path in config.get('paths', []):
+            self.load_custom_handlers_from_path(path)
+
+    def load_custom_handlers_from_path(self, path):
+        assert os.path.isdir(path)
+
+        sys.path.append(path)
+
+        globbing_str = '{}/*.py'.format(path)
+        for filepath in glob.glob(globbing_str):
+            filename = os.path.basename(filepath)
+            name, extension = os.path.splitext(filename)
+            module = importlib.import_module(name)
+            the_plugin_class = getattr(module, 'Plugin')
+            self.custom_handlers[name] = the_plugin_class(self)
+
+    def get_custom_handler(self, name):
+        if name not in self.custom_handlers:
+            plugin_name, function_name = name.split('.')
+            plugin = self.custom_handlers[plugin_name]
+            function = getattr(plugin, function_name)
+            self.custom_handlers[name] = function
+
+        return self.custom_handlers[name]
+
+    def hydrate_action_with_custom_handlers(self, action, payload, custom_handlers_names):
+        def run_handlers(action, payload, the_handlers):
+            for handler in the_handlers:
+                handler(action, payload)
+
+        handlers = [self.get_custom_handler(name) for name in custom_handlers_names]
+        partial_run = partial(run_handlers, action, payload, handlers)
+
+        action['run'] = partial_run
 
     def get_actions_for_topic(self, topic, payload):
         for topic_name, actions in self.topics.items():
