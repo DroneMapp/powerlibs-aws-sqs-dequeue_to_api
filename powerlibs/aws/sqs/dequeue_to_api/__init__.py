@@ -26,11 +26,21 @@ class DequeueToAPI(SQSDequeuer):
     def requests_headers(self):
         return {}
 
-    def load_request_methods(self):
+    def load_request_methods(self, requests_module=None):
+        requests_module = requests_module or requests
         self.request_methods = {}
 
+        def do_request(request_method, *args, **kwargs):
+            headers = kwargs.get('headers', {})
+            headers.update(self.requests_headers)
+            kwargs['headers'] = headers
+            response = request_method(*args, **kwargs)
+            response.raise_for_status()
+            return response
+
         for method_name in ('get', 'post', 'patch', 'delete', 'put'):
-            self.request_methods[method_name] = getattr(requests, method_name)
+            method = getattr(requests_module, method_name)
+            self.request_methods[method_name] = partial(do_request, method)
 
     def load_config(self, config_data):
         self.config = config_data['config']
@@ -69,11 +79,11 @@ class DequeueToAPI(SQSDequeuer):
         data_map = action.get('data_map', {})
         mapped_entries = [apply_data_map(entry, data_map) for entry in accumulation_entries]
 
-        def run(the_request_method, the_mapped_entries, headers):
+        def run(the_request_method, the_mapped_entries):
             for entry in the_mapped_entries:
-                the_request_method(url, payload=entry, headers=headers)
+                the_request_method(url, payload=entry)
 
-        partial_run = partial(run, request_method, mapped_entries, self.requests_headers)
+        partial_run = partial(run, request_method, mapped_entries)
         action['run'] = partial_run
 
     def load_custom_handlers(self, config):
