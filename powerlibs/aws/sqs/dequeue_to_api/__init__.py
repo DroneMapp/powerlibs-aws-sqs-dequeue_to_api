@@ -13,6 +13,9 @@ from .transformations import accumulate, apply_data_map
 
 
 class DequeueToAPI(SQSDequeuer):
+
+    request_methods = {}
+
     def __init__(self, config_data, queue_name, *args, **kwargs):
         super().__init__(queue_name, None, *args, **kwargs)
         self.load_config(config_data)
@@ -28,7 +31,6 @@ class DequeueToAPI(SQSDequeuer):
 
     def load_request_methods(self, requests_module=None):
         requests_module = requests_module or requests
-        self.request_methods = {}
 
         def do_request(request_method, *args, **kwargs):
             headers = kwargs.get('headers', {})
