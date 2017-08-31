@@ -83,7 +83,12 @@ def dequeuer(config):
         )
     )
 
-    d = DequeueToAPI(
+    class MyDequeuer(DequeueToAPI):
+        @property
+        def requests_headers(self):
+            return {'Authorization': 'token TEST-TOKEN'}
+
+    d = MyDequeuer(
         config, 'TEST QUEUE',
         process_pool_size=0,  # Do not use multiprocessing.
         thread_pool_size=0,  # Do not use threads.
@@ -92,8 +97,15 @@ def dequeuer(config):
         aws_region='AWS_REGION'
     )
 
-    for method_name in d.request_methods:
-        d.request_methods[method_name] = mocked_requests_method
+    mocked_requests_module = mock.Mock(
+        get=mocked_requests_method,
+        post=mocked_requests_method,
+        patch=mocked_requests_method,
+        delete=mocked_requests_method,
+    )
+    d.mocked_requests_module = mocked_requests_module
+    d.mocked_requests_method = mocked_requests_method
+    d.load_request_methods(mocked_requests_module)
 
     return d
 
