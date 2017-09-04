@@ -80,11 +80,17 @@ class DequeueToAPI(SQSDequeuer):
         data_map = action.get('data_map', {})
         mapped_entries = [apply_data_map(entry, data_map) for entry in accumulation_entries]
 
-        def run(the_request_method, the_mapped_entries):
-            for entry in the_mapped_entries:
+        payload_template = action.get('payload', None)
+        if payload_template:
+            hydrated_entries = [self.hydrate_payload(payload_template, entry) for entry in mapped_entries]
+        else:
+            hydrated_entries = mapped_entries
+
+        def run(the_request_method, the_entries):
+            for entry in the_entries:
                 the_request_method(url, payload=entry)
 
-        partial_run = partial(run, request_method, mapped_entries)
+        partial_run = partial(run, request_method, hydrated_entries)
         action['run'] = partial_run
 
     def load_custom_handlers(self, config):
