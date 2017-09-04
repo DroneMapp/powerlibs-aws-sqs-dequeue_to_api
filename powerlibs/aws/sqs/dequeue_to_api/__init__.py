@@ -60,7 +60,8 @@ class DequeueToAPI(SQSDequeuer):
 
         return hydrated_payload
 
-    def hydrate_action(self, action, payload):
+    def hydrate_action(self, topic, action, payload):
+        action['message_topic'] = topic
         endpoint = action.get('endpoint', None)
         if endpoint:
             self.hydrate_action_with_endpoint(action, payload, endpoint)
@@ -135,7 +136,7 @@ class DequeueToAPI(SQSDequeuer):
 
             if re.match(expanded_topic_name, topic):
                 for action_name, action_data in actions:
-                    self.hydrate_action(action_data, payload)
+                    self.hydrate_action(topic, action_data, payload)
                     yield (action_name, action_data)
 
     def do_handle_message(self, message, topic, payload):
