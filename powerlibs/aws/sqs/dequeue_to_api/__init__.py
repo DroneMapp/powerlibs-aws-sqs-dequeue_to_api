@@ -4,6 +4,7 @@ import glob
 import importlib
 import json
 import os.path
+import re
 import sys
 
 import requests
@@ -125,7 +126,8 @@ class DequeueToAPI(SQSDequeuer):
     def get_actions_for_topic(self, topic, payload):
         for topic_name, actions in self.topics.items():
             expanded_topic_name = topic_name.format(config=self.config, payload=payload)
-            if expanded_topic_name == topic:
+
+            if re.match(expanded_topic_name, topic):
                 for action_name, action_data in actions:
                     self.hydrate_action(action_data, payload)
                     yield (action_name, action_data)

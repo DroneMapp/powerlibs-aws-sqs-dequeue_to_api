@@ -69,6 +69,11 @@ def config():
                     'status': 'created',
                     'parent': '{payload[id]}',
                 }
+            },
+            'test_regexp_matching': {
+                'topic': 'object__\w+',
+                'endpoint': 'test/',
+                'method': 'POST',
             }
         }
     }
