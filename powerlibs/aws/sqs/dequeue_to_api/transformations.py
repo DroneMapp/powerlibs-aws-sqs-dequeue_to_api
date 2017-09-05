@@ -41,12 +41,16 @@ def accumulate(base_level, accumulators, url_getter=None):
 
 
 def apply_data_map(data, data_map):
+    mapped = {}
     for key, value in data.items():
         if isinstance(value, (str, bytes)) and value.startswith('MAP:'):
             _, *map_key_parts = value.split(':')  # NOQA
             map_key = ':'.join(map_key_parts)
 
-            if map_key:
-                data[key] = data_map[map_key]
+            if map_key and map_key in data_map:
+                mapped[key] = data_map[map_key]
 
-    return data
+        else:
+            mapped[key] = value
+
+    return mapped

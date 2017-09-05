@@ -83,7 +83,7 @@ class DequeueToAPI(SQSDequeuer):
 
         payload_template = action.get('payload', None)
         if payload_template:
-            hydrated_entries = [self.hydrate_payload(payload_template, entry) for entry in mapped_entries]
+            hydrated_entries = [self.hydrate_payload(payload_template, entry) for entry in mapped_entries if entry]
         else:
             hydrated_entries = mapped_entries
 
