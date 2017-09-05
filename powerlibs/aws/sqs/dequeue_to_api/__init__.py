@@ -89,7 +89,7 @@ class DequeueToAPI(SQSDequeuer):
 
         def run(the_request_method, the_entries):
             for entry in the_entries:
-                the_request_method(url, payload=entry)
+                the_request_method(url, json=entry)
 
         partial_run = partial(run, request_method, hydrated_entries)
         action['run'] = partial_run
