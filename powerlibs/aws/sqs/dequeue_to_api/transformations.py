@@ -3,13 +3,14 @@ import requests
 
 def url_get(url):
     response = requests.get(url)
-    if response.status_code // 100 == 2:
-        response_data = response.json()
+    response.raise_for_status()
 
-        if 'results' in response_data:
-            return response_data['results']
-        else:
-            return response_data
+    response_data = response.json()
+
+    if 'results' in response_data:
+        return response_data['results']
+    else:
+        return response_data
 
 
 def accumulate(base_level, accumulators, url_getter=None):
