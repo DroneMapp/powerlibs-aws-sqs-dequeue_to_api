@@ -41,7 +41,9 @@ class DequeueToAPI(SQSDequeuer):
 
         for method_name in ('get', 'post', 'patch', 'delete', 'put'):
             method = getattr(requests_module, method_name)
-            self.request_methods[method_name] = partial(do_request, method)
+            requester = partial(do_request, method)
+            self.request_methods[method_name] = requester
+            setattr(self, method_name, requester)
 
     def load_config(self, config_data):
         self.config = config_data['config']
@@ -56,7 +58,7 @@ class DequeueToAPI(SQSDequeuer):
     def hydrate_payload(self, payload_template, payload):
         hydrated_payload = {}
         for key, value in payload_template.items():
-            hydrated_payload[key] = value.format(payload=payload)
+            hydrated_payload[key] = value.format(**payload)
 
         return hydrated_payload
 
@@ -76,22 +78,22 @@ class DequeueToAPI(SQSDequeuer):
         request_method = self.request_methods[action['method'].lower()]
 
         accumulators = action.get('accumulators', [])
-        accumulation_entries = accumulate(payload, accumulators)
-
-        data_map = action.get('data_map', {})
-        mapped_entries = [apply_data_map(entry, data_map) for entry in accumulation_entries]
+        accumulation_entries = accumulate(self, payload, accumulators)
 
         payload_template = action.get('payload', None)
         if payload_template:
-            hydrated_entries = [self.hydrate_payload(payload_template, entry) for entry in mapped_entries if entry]
+            hydrated_entries = [self.hydrate_payload(payload_template, entry) for entry in accumulation_entries if entry]
         else:
-            hydrated_entries = mapped_entries
+            hydrated_entries = accumulation_entries
+
+        data_map = action.get('data_map', {})
+        mapped_entries = [apply_data_map(entry, data_map) for entry in hydrated_entries]
 
         def run(the_request_method, the_entries):
             for entry in the_entries:
                 the_request_method(url, json=entry)
 
-        partial_run = partial(run, request_method, hydrated_entries)
+        partial_run = partial(run, request_method, mapped_entries)
         action['run'] = partial_run
 
     def load_custom_handlers(self, config):
