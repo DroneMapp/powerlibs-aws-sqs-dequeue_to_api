@@ -55,45 +55,54 @@ class DequeueToAPI(SQSDequeuer):
 
             self.topics[topic_name].append((action_name, action_data))
 
-    def hydrate_payload(self, payload_template, payload):
+    def apply_payload_template(self, payload_template, topic, topic_groups, action, payload):
         hydrated_payload = {}
         for key, value in payload_template.items():
-            hydrated_payload[key] = value.format(**payload)
+            hydrated_payload[key] = value.format(
+                _topic=topic,
+                _topic_groups=topic_groups,
+                _action=action,
+                **payload
+            )
 
         return hydrated_payload
 
-    def hydrate_action(self, topic, action, payload):
-        action['message_topic'] = topic
+    def hydrate_action(self, topic, topic_groups, action, payload):
+        action['message_topic'] = topic  # TODO: deprecate this!
         endpoint = action.get('endpoint', None)
         if endpoint:
-            self.hydrate_action_with_endpoint(action, payload, endpoint)
+            self.hydrate_action_with_endpoint(topic, topic_groups, action, payload, endpoint)
 
         custom_handlers = action.get('custom_handlers', None)
         if custom_handlers:
             self.hydrate_action_with_custom_handlers(action, payload, custom_handlers)
 
-    def hydrate_action_with_endpoint(self, action, payload, endpoint):
+    def endpoint_run(self, request_method_name, url, the_entries):
+        request_method = self.request_methods[request_method_name]
+        for entry in the_entries:
+            request_method(url, json=entry)
+
+    def hydrate_action_with_endpoint(self, topic, topic_groups, action, payload, endpoint):
         url_str = os.path.join(self.config['base_url'], endpoint)
-        url = url_str.format(config=self.config, payload=payload)
-        request_method = self.request_methods[action['method'].lower()]
+        url = url_str.format(config=self.config, payload=payload, topic=topic)
 
         accumulators = action.get('accumulators', [])
         accumulation_entries = accumulate(self, payload, accumulators)
 
         payload_template = action.get('payload', None)
         if payload_template:
-            hydrated_entries = [self.hydrate_payload(payload_template, entry) for entry in accumulation_entries if entry]
+            hydrated_entries = [
+                self.apply_payload_template(payload_template, topic, topic_groups, action, entry)
+                for entry in accumulation_entries
+                if entry
+            ]
         else:
             hydrated_entries = accumulation_entries
 
         data_map = action.get('data_map', {})
         mapped_entries = [apply_data_map(entry, data_map) for entry in hydrated_entries]
 
-        def run(the_request_method, the_entries):
-            for entry in the_entries:
-                the_request_method(url, json=entry)
-
-        partial_run = partial(run, request_method, mapped_entries)
+        partial_run = partial(self.endpoint_run, action.get('method').lower(), url, mapped_entries)
         action['run'] = partial_run
 
     def load_custom_handlers(self, config):
@@ -126,13 +135,13 @@ class DequeueToAPI(SQSDequeuer):
 
         return self.custom_handlers[name]
 
-    def hydrate_action_with_custom_handlers(self, action, payload, custom_handlers_names):
-        def run_handlers(action, payload, the_handlers):
-            for handler in the_handlers:
-                handler(action, payload)
+    def run_custom_handlers(self, action, payload, the_handlers):
+        for handler in the_handlers:
+            handler(action, payload)
 
+    def hydrate_action_with_custom_handlers(self, action, payload, custom_handlers_names):
         handlers = [self.get_custom_handler(name) for name in custom_handlers_names]
-        partial_run = partial(run_handlers, action, payload, handlers)
+        partial_run = partial(self.run_custom_handlers, action, payload, handlers)
 
         action['run'] = partial_run
 
@@ -140,9 +149,11 @@ class DequeueToAPI(SQSDequeuer):
         for topic_name, actions in self.topics.items():
             expanded_topic_name = topic_name.format(config=self.config, payload=payload)
 
-            if re.match(expanded_topic_name, topic):
+            match = re.match(expanded_topic_name, topic)
+            if match:
+                topic_groups = match.groupdict()
                 for action_name, action_data in actions:
-                    self.hydrate_action(topic, action_data, payload)
+                    self.hydrate_action(topic, topic_groups, action_data, payload)
                     yield (action_name, action_data)
 
     def do_handle_message(self, message, topic, payload):
