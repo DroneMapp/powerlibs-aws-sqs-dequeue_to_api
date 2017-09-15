@@ -181,6 +181,10 @@ class DequeueToAPI(SQSDequeuer):
                     ex=ex
                 ))
 
+                response = getattr(ex, 'response', None)
+                if response is not None:
+                    self.logger.error(' Response: {}'.format(response.text))
+
                 if success_count == 0:
                     return
             else:
