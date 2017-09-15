@@ -58,12 +58,23 @@ class DequeueToAPI(SQSDequeuer):
     def apply_payload_template(self, payload_template, topic, topic_groups, action, payload):
         hydrated_payload = {}
         for key, value in payload_template.items():
-            hydrated_payload[key] = value.format(
-                _topic=topic,
-                _topic_groups=topic_groups,
-                _action=action,
-                **payload
-            )
+
+            optional = False
+            if value.startswith('OPTIONAL:'):
+                optional = True
+                value = value.replace('OPTIONAL:', '')
+
+            try:
+                hydrated_payload[key] = value.format(
+                    _topic=topic,
+                    _topic_groups=topic_groups,
+                    _action=action,
+                    **payload
+                )
+            except KeyError as ex:
+                if optional:
+                    continue
+                raise ex
 
         return hydrated_payload
 
