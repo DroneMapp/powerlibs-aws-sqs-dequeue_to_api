@@ -75,6 +75,15 @@ def config():
                 'topic': 'object__\w+',
                 'endpoint': 'test/',
                 'method': 'POST',
+            },
+            'test_regexp_matching_with_groups': {
+                'topic': 'step__(?P<step_name>[^_]+)__(?P<step_status>[^_]+)',
+                'endpoint': 'steps/',
+                'method': 'POST',
+                'payload': {
+                    'status': '{_topic_groups[step_status]}',
+                    'name': '{_topic_groups[step_name]}'
+                }
             }
         }
     }
