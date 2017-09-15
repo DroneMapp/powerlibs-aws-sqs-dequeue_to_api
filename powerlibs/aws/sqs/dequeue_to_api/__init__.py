@@ -110,7 +110,11 @@ class DequeueToAPI(SQSDequeuer):
             dirname = os.path.basename(os.path.dirname(filepath))
             module_name = '{}.plugin'.format(dirname)
             module = importlib.import_module(module_name)
-            the_plugin_class = getattr(module, 'Plugin')
+            try:
+                the_plugin_class = getattr(module, 'Plugin')
+            except AttributeError:
+                continue
+
             self.custom_handlers[dirname] = the_plugin_class(self)
 
     def get_custom_handler(self, name):
