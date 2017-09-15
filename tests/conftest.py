@@ -48,6 +48,18 @@ def create_message():
 
 
 @pytest.fixture
+def born_message():
+    return Message(
+        {
+            'id': 1,
+            'parent_id': 2,
+            'company_name': 'mycompany',
+        },
+        {'topic': {'StringValue': 'mycompany__child_is_born'}}
+    )
+
+
+@pytest.fixture
 def config():
     return {
         'config': {
@@ -60,6 +72,7 @@ def config():
                 'method': 'PATCH',
                 'payload': {
                     'status': 'new status',
+                    'foobar': 'OPTIONAL:{payload[foobar]}'
                 }
             },
             'create_status': {
@@ -84,7 +97,16 @@ def config():
                     'status': '{_topic_groups[step_status]}',
                     'name': '{_topic_groups[step_name]}'
                 }
-            }
+            },
+            'test_not_optional_missing': {
+                'topic': '{payload[company_name]}__child_is_born',
+                'endpoint': 'parents/{payload[parent_id]}',
+                'method': 'PATCH',
+                'payload': {
+                    'status': 'new status',
+                    'foobar_not_optional': '{payload[foobar]}'
+                }
+            },
         }
     }
 
