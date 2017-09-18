@@ -86,7 +86,7 @@ class DequeueToAPI(SQSDequeuer):
 
         custom_handlers = action.get('custom_handlers', None)
         if custom_handlers:
-            self.hydrate_action_with_custom_handlers(action, payload, custom_handlers)
+            self.hydrate_action_with_custom_handlers(action, topic, payload, custom_handlers)
 
     def endpoint_run(self, request_method_name, url, the_entries):
         request_method = self.request_methods[request_method_name]
@@ -146,13 +146,13 @@ class DequeueToAPI(SQSDequeuer):
 
         return self.custom_handlers[name]
 
-    def run_custom_handlers(self, action, payload, the_handlers):
+    def run_custom_handlers(self, action, topic, payload, the_handlers):
         for handler in the_handlers:
-            handler(action, payload)
+            handler(action, topic, payload)
 
-    def hydrate_action_with_custom_handlers(self, action, payload, custom_handlers_names):
+    def hydrate_action_with_custom_handlers(self, action, topic, payload, custom_handlers_names):
         handlers = [self.get_custom_handler(name) for name in custom_handlers_names]
-        partial_run = partial(self.run_custom_handlers, action, payload, handlers)
+        partial_run = partial(self.run_custom_handlers, action, topic, payload, handlers)
 
         action['run'] = partial_run
 
