@@ -168,7 +168,6 @@ class DequeueToAPI(SQSDequeuer):
                     yield (action_name, action_data)
 
     def do_handle_message(self, message, topic, payload):
-        success_count = 0
         treated_messages = 0
         for action_name, action_data in self.get_actions_for_topic(topic, payload):
             try:
@@ -184,11 +183,7 @@ class DequeueToAPI(SQSDequeuer):
                 response = getattr(ex, 'response', None)
                 if response is not None:
                     self.logger.error(' Response: {}'.format(response.text))
-
-                if success_count == 0:
-                    return
-            else:
-                success_count += 1
+                break
         else:
             treated_messages += 1
             message.delete()
