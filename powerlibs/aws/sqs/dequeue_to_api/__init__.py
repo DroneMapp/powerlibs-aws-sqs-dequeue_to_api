@@ -76,6 +76,9 @@ class DequeueToAPI(SQSDequeuer):
                     continue
                 raise ex
 
+            if hydrated_payload[key].startswith('INT:'):
+                hydrated_payload[key] = int(hydrated_payload[key])
+
         return hydrated_payload
 
     def hydrate_action(self, topic, topic_groups, action, payload):
