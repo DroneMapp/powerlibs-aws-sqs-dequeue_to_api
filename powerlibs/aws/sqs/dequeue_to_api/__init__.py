@@ -77,7 +77,7 @@ class DequeueToAPI(SQSDequeuer):
                 raise ex
 
             if hydrated_payload[key].startswith('INT:'):
-                hydrated_payload[key] = int(hydrated_payload[key])
+                hydrated_payload[key] = int(hydrated_payload[key].replace('INT:', ''))
 
         return hydrated_payload
 
