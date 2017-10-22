@@ -94,14 +94,18 @@ class DequeueToAPI(SQSDequeuer):
     def endpoint_run(self, request_method_name, url, the_entries):
         request_method = self.request_methods[request_method_name]
         for entry in the_entries:
-            request_method(url, json=entry)
+            if len(entry) == 1 and 'payload' in entry:
+                request_method(url, json=entry['payload'])
+            else:
+                request_method(url, json=entry)
 
     def hydrate_action_with_endpoint(self, topic, topic_groups, action, payload, endpoint):
         url_str = os.path.join(self.config['base_url'], endpoint)
         url = url_str.format(config=self.config, payload=payload, topic=topic)
 
         accumulators = action.get('accumulators', [])
-        accumulation_entries = accumulate(self, payload, accumulators)
+        if accumulators:
+            accumulation_entries = accumulate(self, payload, accumulators)
 
         payload_template = action.get('payload', None)
         if payload_template:
