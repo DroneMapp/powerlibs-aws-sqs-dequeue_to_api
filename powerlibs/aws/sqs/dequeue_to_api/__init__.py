@@ -104,8 +104,7 @@ class DequeueToAPI(SQSDequeuer):
         url = url_str.format(config=self.config, payload=payload, topic=topic)
 
         accumulators = action.get('accumulators', [])
-        if accumulators:
-            accumulation_entries = accumulate(self, payload, accumulators)
+        accumulation_entries = accumulate(self, payload, accumulators)
 
         payload_template = action.get('payload', None)
         if payload_template:
