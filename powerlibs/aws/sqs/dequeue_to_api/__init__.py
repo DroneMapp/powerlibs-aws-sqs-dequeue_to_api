@@ -188,7 +188,12 @@ class DequeueToAPI(SQSDequeuer):
 
                 response = getattr(ex, 'response', None)
                 if response is not None:
-                    self.logger.error(' Response: {}'.format(response.content))
+                    content = getattr(response, 'content')
+                    if content is None:
+                        content = getattr(response, 'text')
+                    if content is None:
+                        content = response
+                    self.logger.error(' Response: {}'.format(content))
                 break
         else:
             treated_messages += 1
