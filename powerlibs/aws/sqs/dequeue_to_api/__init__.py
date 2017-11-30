@@ -6,6 +6,7 @@ import json
 import os.path
 import re
 import sys
+import traceback
 
 import requests
 
@@ -179,12 +180,13 @@ class DequeueToAPI(SQSDequeuer):
             try:
                 action_data['run']()
             except Exception as ex:
-                self.logger.error('Exception {ex_type} on topic "{topic}", action "{action_name}": {ex}'.format(
-                    ex_type=type(ex),
-                    topic=topic,
-                    action_name=action_name,
-                    ex=ex
-                ))
+                type_, value_, traceback_ = sys.exc_info()
+                formatted_traceback = traceback.format_tb(traceback_)
+
+                self.logger.error(
+                        f'Exception {type_} on topic "{topic}", action "{action_name}":'
+                        f'{value_}. Traceback: {formatted_traceback}'
+                )
 
                 response = getattr(ex, 'response', None)
                 if response is not None:
