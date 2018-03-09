@@ -185,10 +185,11 @@ class DequeueToAPI(SQSDequeuer):
             except Exception as ex:
                 type_, value_, traceback_ = sys.exc_info()
                 formatted_traceback = traceback.format_tb(traceback_)
+                pretty_traceback = ''.join(formatted_traceback)
 
                 self.logger.error(
-                        f'Exception {type_} on topic "{topic}", action "{action_name}":'
-                        f'{value_}. Traceback: {formatted_traceback}'
+                        f'Exception {type_} on topic "{topic}", action "{action_name}": '
+                        f'{value_}. Traceback: {pretty_traceback}'
                 )
 
                 response = getattr(ex, 'response', None)
@@ -215,7 +216,4 @@ class DequeueToAPI(SQSDequeuer):
         return self.do_handle_message(message, topic, payload)
 
     def handle_message(self, message):
-        if self.thread_pool_size:
-            self.execute_new_thread(self.parse_and_handle_message, [message])
-        else:
-            self.parse_and_handle_message(message)
+        self.execute_new_thread(self.parse_and_handle_message, [message])
