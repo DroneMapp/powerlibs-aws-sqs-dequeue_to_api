@@ -79,6 +79,8 @@ class DequeueToAPI(SQSDequeuer):
 
             if hydrated_payload[key].startswith('INT:'):
                 hydrated_payload[key] = int(hydrated_payload[key].replace('INT:', ''))
+            elif hydrated_payload[key].startswith('DICT:'):
+                hydrated_payload[key] = dict(hydrated_payload[key].replace('DICT:', ''))
 
         return hydrated_payload
 
