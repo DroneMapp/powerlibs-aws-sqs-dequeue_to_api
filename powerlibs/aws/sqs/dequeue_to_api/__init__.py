@@ -37,6 +37,10 @@ class DequeueToAPI(SQSDequeuer):
             headers.update(self.requests_headers)
             kwargs['headers'] = headers
             response = request_method(*args, **kwargs)
+
+            if request_method.__name__ == 'delete' and response.status_code == 404:
+                return response
+
             response.raise_for_status()
             return response
 
