@@ -38,10 +38,16 @@ class DequeueToAPI(SQSDequeuer):
             kwargs['headers'] = headers
             response = request_method(*args, **kwargs)
 
-            if request_method.__name__ == 'delete' and response.status_code == 404:
+            method_name = request_method.__name__
+            if method_name == 'delete' and response.status_code == 404:
                 return response
 
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except Exception as ex:
+                print('do_request:', method_name, ':', args, kwargs)
+                print(response.content)
+                raise ex
             return response
 
         for method_name in ('get', 'post', 'patch', 'delete', 'put'):
@@ -191,13 +197,14 @@ class DequeueToAPI(SQSDequeuer):
             try:
                 action_data['run']()
             except Exception as ex:
+                cls = ex.__class__.__name__
                 type_, value_, traceback_ = sys.exc_info()
                 formatted_traceback = traceback.format_tb(traceback_)
                 pretty_traceback = ''.join(formatted_traceback)
 
                 self.logger.error(
-                        f'Exception {type_} on topic "{topic}", action "{action_name}": '
-                        f'{value_}. Traceback: {pretty_traceback}'
+                    f'Exception {cls} on topic "{topic}", action "{action_name}": '
+                    f'{value_}. Traceback: {pretty_traceback}'
                 )
 
                 response = getattr(ex, 'response', None)
